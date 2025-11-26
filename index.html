@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Campus Fest & Resource Manager</title>
+  <meta name="description" content="PWA to manage campus events, registrations, tickets, check-ins, and analytics." />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="" crossorigin="" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-grid">
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>Campus Fest Manager</h1>
+          <div class="muted">Plan • Register • Check-in • Analyze</div>
+        </div>
+      </div>
+      <div class="tools">
+        <span class="status">
+          <span id="statusDot" class="dot offline" aria-hidden="true"></span>
+          <span id="statusText">Offline</span>
+        </span>
+        <button id="installBtn" class="btn pill">Install app</button>
+      </div>
+    </div>
+    <nav class="container nav">
+      <a href="#events" class="nav-link">Events</a>
+      <a href="#register" class="nav-link">Register</a>
+      <a href="#tickets" class="nav-link">Tickets</a>
+      <a href="#scanner" class="nav-link">Scanner</a>
+      <a href="#announcements" class="nav-link">Announcements</a>
+      <a href="#map" class="nav-link">Map</a>
+      <a href="#analytics" class="nav-link">Analytics</a>
+      <a href="#settings" class="nav-link">Settings</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <!-- EVENTS -->
+    <section class="page" data-route="events">
+      <h2>Events</h2>
+      <p class="muted">Create and manage campus events and sessions.</p>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Create event</h3>
+          <form id="eventForm">
+            <div class="grid2">
+              <div>
+                <label>Title</label>
+                <input name="title" type="text" placeholder="Tech Fest ’25" required />
+              </div>
+              <div>
+                <label>Date</label>
+                <input name="date" type="date" required />
+              </div>
+            </div>
+            <div class="grid2">
+              <div>
+                <label>Start time</label>
+                <input name="startTime" type="time" required />
+              </div>
+              <div>
+                <label>End time</label>
+                <input name="endTime" type="time" required />
+              </div>
+            </div>
+            <div>
+              <label>Location</label>
+              <input name="location" type="text" placeholder="Main Auditorium" required />
+            </div>
+            <div class="grid2">
+              <div>
+                <label>Capacity</label>
+                <input name="capacity" type="number" min="1" value="200" required />
+              </div>
+              <div>
+                <label>Track</label>
+                <input name="track" type="text" placeholder="Design/Dev/AI" />
+              </div>
+            </div>
+            <div>
+              <label>Description</label>
+              <textarea name="description" rows="3" placeholder="What attendees will learn..."></textarea>
+            </div>
+            <button class="btn primary" type="submit">Add event</button>
+            <div id="eventMsg" class="help"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="flex-between">
+            <h3>Event list</h3>
+            <button id="exportEventsBtn" class="btn">Export CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table class="table" id="eventsTable" aria-label="Events table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Date</th>
+                  <th>Time</th>
+                  <th>Location</th>
+                  <th>Capacity</th>
+                </tr>
+              </thead>
+              <tbody><!-- populated by JS --></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REGISTER -->
+    <section class="page" data-route="register">
+      <h2>Register attendee</h2>
+      <p class="muted">Issue a ticket with QR code for quick check-in.</p>
+
+      <div class="grid">
+        <div class="card">
+          <form id="regForm">
+            <div>
+              <label>Event</label>
+              <select id="regEvent" name="eventId" required></select>
+            </div>
+            <div class="grid2">
+              <div>
+                <label>Full name</label>
+                <input name="name" type="text" placeholder="Ada Lovelace" required />
+              </div>
+              <div>
+                <label>Email</label>
+                <input name="email" type="email" placeholder="you@example.com" required />
+              </div>
+            </div>
+            <div class="grid2">
+              <div>
+                <label>Ticket type</label>
+                <select name="ticketType" required>
+                  <option value="">Select</option>
+                  <option>General</option>
+                  <option>Student</option>
+                  <option>VIP</option>
+                </select>
+              </div>
+              <div>
+                <label>Notes (optional)</label>
+                <input name="notes" type="text" placeholder="Accessibility, meal..." />
+              </div>
+            </div>
+            <button class="btn primary" type="submit">Create ticket</button>
+            <div id="regMsg" class="help"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Last created ticket</h3>
+          <div id="lastTicket" class="ticket">
+            <div id="lastTicketInfo" class="muted">No ticket yet</div>
+            <div id="lastTicketQR" class="qr"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TICKETS -->
+    <section class="page" data-route="tickets">
+      <h2>Tickets</h2>
+      <p class="muted">Find tickets by email and show QR at the gate.</p>
+
+      <div class="card">
+        <form id="findTicketForm" class="inline-form">
+          <input id="findEmail" type="email" placeholder="attendee@example.com" required />
+          <button class="btn" type="submit">Find tickets</button>
+        </form>
+        <div id="ticketResults" class="ticket-list"></div>
+        <div id="ticketDetail" class="ticket">
+          <div id="ticketInfo" class="muted"></div>
+          <div id="ticketQR" class="qr"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCANNER -->
+    <section class="page" data-route="scanner">
+      <h2>Check-in scanner</h2>
+      <p class="muted">Use your device camera to scan ticket QR codes.</p>
+
+      <div class="grid">
+        <div class="card">
+          <div class="flex gap">
+            <button id="startScanBtn" class="btn primary">Start scanner</button>
+            <button id="stopScanBtn" class="btn">Stop</button>
+          </div>
+          <video id="video" playsinline></video>
+          <canvas id="canvas" style="display:none;"></canvas>
+          <div id="scanMsg" class="note">Scanner idle.</div>
+        </div>
+        <div class="card">
+          <h3>Last scan</h3>
+          <div id="scanResult">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ANNOUNCEMENTS -->
+    <section class="page" data-route="announcements">
+      <h2>Announcements</h2>
+      <p class="muted">Post updates for volunteers and attendees.</p>
+
+      <div class="grid">
+        <div class="card">
+          <form id="annForm">
+            <div>
+              <label>Title</label>
+              <input name="title" type="text" placeholder="Welcome to Day 1!" required />
+            </div>
+            <div>
+              <label>Message</label>
+              <textarea name="body" rows="3" placeholder="Registration starts at 8:30 AM…" required></textarea>
+            </div>
+            <div class="flex gap">
+              <button class="btn primary" type="submit">Post announcement</button>
+              <button id="notifyBtn" class="btn" type="button">Show local notification</button>
+            </div>
+            <div id="annMsg" class="help"></div>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Recent posts</h3>
+          <ul id="annList" class="list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAP -->
+    <section class="page" data-route="map">
+      <h2>Campus map</h2>
+      <p class="muted">Sample markers. Update coordinates in app.js (mapMarkers).</p>
+      <div id="map" class="map"></div>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section class="page" data-route="analytics">
+      <h2>Analytics</h2>
+      <p class="muted">Registrations vs Check-ins per event.</p>
+      <div class="card">
+        <canvas id="regChart" height="120"></canvas>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="page" data-route="settings">
+      <h2>Settings & data</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Data export/import</h3>
+          <div class="flex gap">
+            <button id="exportJSONBtn" class="btn">Export JSON</button>
+            <button id="exportRegsCSVBtn" class="btn">Export Registrations CSV</button>
+          </div>
+          <div class="mt">
+            <label class="btn">
+              Import JSON
+              <input id="importJSONInput" type="file" accept="application/json" hidden />
+            </label>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Danger zone</h3>
+          <button id="clearDBBtn" class="btn danger">Reset all data</button>
+          <div class="help">This clears local data (events, registrations, announcements). Reload page after.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container flex-between">
+      <div>© 2025 Campus Fest Manager</div>
+      <div class="muted">Installable PWA • Works offline</div>
+    </div>
+  </footer>
+
+  <!-- Vendor libs via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.5/dist/dexie.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- App -->
+  <script src="app.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
+    }
+  </script>
+</body>
+</html>
