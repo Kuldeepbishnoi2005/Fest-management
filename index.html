@@ -4,14 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Campus Fest & Resource Manager</title>
-  <meta name="description" content="PWA to manage campus events, registrations, tickets, check-ins, and analytics." />
+  <meta name="description" content="Role-based PWA for campus events: admin & user flows with offline support." />
   <meta name="theme-color" content="#2563eb" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
 <body>
   <header class="site-header">
@@ -19,8 +18,8 @@
       <div class="brand">
         <div class="logo"></div>
         <div>
-          <h1>Campus Fest Manager</h1>
-          <div class="muted">Plan • Register • Check-in • Analyze</div>
+          <h1> CAMPUS CARNIVAL</h1>
+          <div class="muted">Admin • User •</div>
         </div>
       </div>
       <div class="tools">
@@ -28,10 +27,18 @@
           <span id="statusDot" class="dot offline" aria-hidden="true"></span>
           <span id="statusText">Offline</span>
         </span>
-        <button id="installBtn" class="btn pill">Install app</button>
+        <button id="installBtn" class="btn pill" style="display:none">Install app</button>
+        <button id="loginLink" class="btn pill">Login / Register</button>
+        <div id="userBox" class="userbox" style="display:none">
+          <span id="userName" class="muted">—</span>
+          <span id="roleBadge" class="badge">role</span>
+          <button id="logoutBtn" class="btn">Logout</button>
+        </div>
       </div>
     </div>
+
     <nav class="container nav">
+      <a href="#auth" class="nav-link">Auth</a>
       <a href="#events" class="nav-link">Events</a>
       <a href="#register" class="nav-link">Register</a>
       <a href="#tickets" class="nav-link">Tickets</a>
@@ -44,14 +51,78 @@
   </header>
 
   <main class="container">
+    <!-- AUTH -->
+    <section class="page" data-route="auth">
+      <h2>Login / Register</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Login</h3>
+          <form id="loginForm">
+            <div>
+              <label>Email</label>
+              <input name="email" type="email" placeholder="you@example.com" required />
+            </div>
+            <div>
+              <label>Password</label>
+              <input name="password" type="password" placeholder="••••••" required />
+            </div>
+            <button class="btn primary" type="submit">Login</button>
+            <div id="loginMsg" class="help"></div>
+            <!-- <div class="help mt">Try admin: admin@campus.test / Admin@123</div> -->
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Register</h3>
+          <form id="signupForm">
+            <div class="grid2">
+              <div>
+                <label>Full name</label>
+                <input name="name" type="text" placeholder="Ada Lovelace" required />
+              </div>
+              <div>
+                <label>Email</label>
+                <input name="email" type="email" placeholder="you@example.com" required />
+              </div>
+            </div>
+            <div class="grid2">
+              <div>
+                <label>Password</label>
+                <input name="password" type="password" placeholder="min 6 chars" required />
+              </div>
+              <div>
+                <label>Confirm password</label>
+                <input name="confirm" type="password" required />
+              </div>
+            </div>
+            <div class="grid2">
+              <div>
+                <label>Role</label>
+                <select id="regRole" name="role" required>
+                  <option value="user" selected>User</option>
+                  <option value="admin">Admin (requires secret)</option>
+                </select>
+              </div>
+              <div id="adminCodeWrap" style="display:none">
+                <label>Admin secret</label>
+                <input name="adminCode" type="text" placeholder="ENTER SECRET KEY" />
+              </div>
+            </div>
+            <button class="btn primary" type="submit">Create account</button>
+            <div id="signupMsg" class="help"></div>
+          </form>
+        </div>
+      </div>
+    </section>
+
     <!-- EVENTS -->
     <section class="page" data-route="events">
       <h2>Events</h2>
-      <p class="muted">Create and manage campus events and sessions.</p>
+      <p class="muted">Admin can create events. Users can view and register.</p>
 
       <div class="grid">
-        <div class="card">
-          <h3>Create event</h3>
+        <div id="eventFormWrap" class="card">
+          <h3>Create event (Admin)</h3>
           <form id="eventForm">
             <div class="grid2">
               <div>
@@ -112,17 +183,17 @@
                   <th>Capacity</th>
                 </tr>
               </thead>
-              <tbody><!-- populated by JS --></tbody>
+              <tbody></tbody>
             </table>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- REGISTER -->
+    <!-- REGISTER (USER) -->
     <section class="page" data-route="register">
-      <h2>Register attendee</h2>
-      <p class="muted">Issue a ticket with QR code for quick check-in.</p>
+      <h2>Book a ticket</h2>
+      <p class="muted">Logged-in users can book tickets. Your email is used for ticket lookup.</p>
 
       <div class="grid">
         <div class="card">
@@ -134,7 +205,7 @@
             <div class="grid2">
               <div>
                 <label>Full name</label>
-                <input name="name" type="text" placeholder="Ada Lovelace" required />
+                <input name="name" type="text" placeholder="Your name" required />
               </div>
               <div>
                 <label>Email</label>
@@ -174,7 +245,7 @@
     <!-- TICKETS -->
     <section class="page" data-route="tickets">
       <h2>Tickets</h2>
-      <p class="muted">Find tickets by email and show QR at the gate.</p>
+      <p class="muted" id="ticketsSub">Admins can find tickets by email. Users see their own tickets.</p>
 
       <div class="card">
         <form id="findTicketForm" class="inline-form">
@@ -182,17 +253,17 @@
           <button class="btn" type="submit">Find tickets</button>
         </form>
         <div id="ticketResults" class="ticket-list"></div>
-        <div id="ticketDetail" class="ticket">
+        <div id="ticketDetail" class="ticket" style="display:none">
           <div id="ticketInfo" class="muted"></div>
           <div id="ticketQR" class="qr"></div>
         </div>
       </div>
     </section>
 
-    <!-- SCANNER -->
+    <!-- SCANNER (ADMIN) -->
     <section class="page" data-route="scanner">
-      <h2>Check-in scanner</h2>
-      <p class="muted">Use your device camera to scan ticket QR codes.</p>
+      <h2>Check-in scanner (Admin)</h2>
+      <p class="muted">Use device camera to scan ticket QR codes.</p>
 
       <div class="grid">
         <div class="card">
@@ -214,10 +285,10 @@
     <!-- ANNOUNCEMENTS -->
     <section class="page" data-route="announcements">
       <h2>Announcements</h2>
-      <p class="muted">Post updates for volunteers and attendees.</p>
+      <p class="muted">Admins can post updates. Users can read them.</p>
 
       <div class="grid">
-        <div class="card">
+        <div id="annFormWrap" class="card">
           <form id="annForm">
             <div>
               <label>Title</label>
@@ -248,7 +319,7 @@
       <div id="map" class="map"></div>
     </section>
 
-    <!-- ANALYTICS -->
+    <!-- ANALYTICS (ADMIN) -->
     <section class="page" data-route="analytics">
       <h2>Analytics</h2>
       <p class="muted">Registrations vs Check-ins per event.</p>
@@ -257,7 +328,7 @@
       </div>
     </section>
 
-    <!-- SETTINGS -->
+    <!-- SETTINGS (ADMIN) -->
     <section class="page" data-route="settings">
       <h2>Settings & data</h2>
       <div class="grid">
@@ -277,7 +348,7 @@
         <div class="card">
           <h3>Danger zone</h3>
           <button id="clearDBBtn" class="btn danger">Reset all data</button>
-          <div class="help">This clears local data (events, registrations, announcements). Reload page after.</div>
+          <div class="help">This clears local data (events, registrations, announcements, users). Reload page after.</div>
         </div>
       </div>
     </section>
@@ -285,8 +356,8 @@
 
   <footer class="site-footer">
     <div class="container flex-between">
-      <div>© 2025 Campus Fest Manager</div>
-      <div class="muted">Installable PWA • Works offline</div>
+      <div>Campus Fest Manager</div>
+      <div class="muted">BY :- VEDANT VAHILE</div>
     </div>
   </footer>
 
