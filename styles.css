@@ -87,4 +87,9 @@ label{display:block; font-weight:600; margin-bottom:.2rem}
 #video{width:100%; border-radius:12px; background:#000}
 #map{height:420px; border-radius:12px; border:1px solid var(--border)}
 
+.userbox{display:flex; align-items:center; gap:.5rem}
+.badge{padding:.15rem .5rem; border-radius:999px; font-size:.8rem; border:1px solid var(--border)}
+.badge.admin{background:#dbeafe; color:#1e3a8a; border-color:#bfdbfe}
+.badge.user{background:#dcfce7; color:#065f46; border-color:#bbf7d0}
+
 .site-footer{border-top:1px solid var(--border); padding:1rem 0; background:#fff}
